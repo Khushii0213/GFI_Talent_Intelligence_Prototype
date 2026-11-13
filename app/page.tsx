@@ -5,7 +5,7 @@ import {classify,evaluate, type Candidate, type Role} from "@/lib/scoring";
 const seed=(resumes as Candidate[]).map(r=>({...r,source:`/resumes/${encodeURIComponent(r.filename)}`}));
 type Result={candidate:Candidate;result:ReturnType<typeof classify>};
 export default function Home(){
- const [items,setItems]=useState<Result[]>(()=>seed.map(candidate=>({candidate,result:classify(candidate)})));
+ const [items,setItems]=useState<Result[]>(()=>seed.filter(candidate=>candidate.status!=="empty").map(candidate=>({candidate,result:classify(candidate)})));
  const [role,setRole]=useState<Role>("LCA"),[query,setQuery]=useState(""),[sort,setSort]=useState("score"),[filter,setFilter]=useState("all");
  const [selected,setSelected]=useState<string|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const ranked=useMemo(()=>{
@@ -13,7 +13,7 @@ export default function Home(){
    const s=role==="LCA"?x.result.lca:x.result.ux;
    const q=query.toLowerCase();
    const matches=!q||x.candidate.id.toLowerCase().includes(q)||x.candidate.text.toLowerCase().includes(q);
-   const filterMatch=filter==="all"||(filter==="strong"&&s.score>=55)||(filter==="potential"&&s.score>=35&&s.score<55)||(filter==="weak"&&s.score<35)||(filter==="errors"&&x.candidate.status==="empty");
+   const filterMatch=filter==="all"||(filter==="strong"&&s.score>=55)||(filter==="potential"&&s.score>=35&&s.score<55)||(filter==="weak"&&s.score<35);
    return matches&&filterMatch;
   }).sort((a,b)=>{
    const aa=role==="LCA"?a.result.lca.score:a.result.ux.score,bb=role==="LCA"?b.result.lca.score:b.result.ux.score;
@@ -38,7 +38,7 @@ export default function Home(){
  return <main className="shell">
   <header className="top"><div><div className="eyebrow">GROWTH FOR IMPACT · TALENT INTELLIGENCE</div><h1>Resume screening workspace</h1><p>Evidence-led candidate matching for two open roles.</p></div><div className="topmark">GFI<span>✳</span></div></header>
   <section className="stats">
-   <div className="stat"><span>Resumes loaded</span><b>{items.length}</b><small>47 source files · {items.filter(x=>x.candidate.status==="empty").length} extraction issue</small></div>
+   <div className="stat"><span>Resumes loaded</span><b>{items.length}</b><small>{seed.length} source files · {seed.filter(x=>x.status==="empty").length} extraction issue</small></div>
    <div className="stat"><span>LCA strong matches</span><b>{lcaStrong}</b><small>Score ≥ 55 · review recommended</small></div>
    <div className="stat"><span>UI/UX strong matches</span><b>{uxStrong}</b><small>Score ≥ 55 · review recommended</small></div>
   </section>
@@ -50,7 +50,7 @@ export default function Home(){
    <div className="listPanel">
     <div className="panelHead"><div><h2>Candidate ranking</h2><p>{ranked.length} candidates · sorted by {sort==="score"?"match score":"candidate ID"}</p></div><label className="upload">＋ Add resume<input type="file" accept="*/*" disabled={busy} onChange={e=>upload(e.target.files?.[0])}/></label></div>
     {message&&<div className="message">{message}</div>}
-    <div className="filters"><input placeholder="Search candidate or resume text…" value={query} onChange={e=>setQuery(e.target.value)}/><select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">All matches</option><option value="strong">Strong match</option><option value="potential">Potential match</option><option value="weak">Weak / uncertain</option><option value="errors">Extraction errors</option></select><select value={sort} onChange={e=>setSort(e.target.value)}><option value="score">Highest score</option><option value="name">Candidate ID</option></select></div>
+    <div className="filters"><input placeholder="Search candidate or resume text…" value={query} onChange={e=>setQuery(e.target.value)}/><select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">All matches</option><option value="strong">Strong match</option><option value="potential">Potential match</option><option value="weak">Weak / uncertain</option></select><select value={sort} onChange={e=>setSort(e.target.value)}><option value="score">Highest score</option><option value="name">Candidate ID</option></select></div>
     <div className="candidateList">{ranked.map((x,i)=>{const s=current(x);return <button key={x.candidate.id} className={`candidate ${selected===x.candidate.id?"chosen":""}`} onClick={()=>setSelected(x.candidate.id)}><span className="rank">{i+1}</span><span className="candname"><b>{x.candidate.id}</b><small>{x.candidate.filename}</small><em>{s.classification}</em></span><span className="score"><b>{s.score}</b><small>/100</small></span></button>})}</div>
    </div>
    <aside className="detailPanel">
